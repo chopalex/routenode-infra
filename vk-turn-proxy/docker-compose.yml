@@ -4,7 +4,7 @@ services:
     image: vk-turn-proxy:local
     container_name: vk-turn-proxy
     restart: unless-stopped
-    # host network: слушает :56000 снаружи и ходит на опубликованный AWG 127.0.0.1:47054
+    # host network: вход через VK Calls на :56000; AWG в конфиге — localhost
     network_mode: host
     command: ["-listen", "0.0.0.0:56000", "-connect", "127.0.0.1:47054"]
     logging:

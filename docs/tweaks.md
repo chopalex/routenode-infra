@@ -19,6 +19,13 @@
 
 ## Сеть
 
-- TCP MSS 1280 на FORWARD awg0 (путь vk-turn + AWG, веб без MTU blackhole).
+- TCP MSS 1280 на FORWARD awg0 (путь через vk-turn + AWG, веб без MTU blackhole).
 - socat UDP/TCP 53 на публичном IP → Pi-hole (опциональный внешний DNS).
-EOF
+
+## vk-turn-proxy
+
+Отдельный сервис входа через сеть звонков VK (не опциональная UDP-обёртка).
+
+- Слушает `:56000/udp` (`network_mode: host`).
+- К AmneziaWG подключается как к `127.0.0.1:47054` (`-connect 127.0.0.1:47054`).
+- Клиент идёт через инфраструктуру VK Calls; на сервере прокси уже стыкуется с локальным AWG.

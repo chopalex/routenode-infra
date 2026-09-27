@@ -7,15 +7,21 @@
 ## Архитектура
 
 ```
-Клиент AmneziaWG ──UDP──► :47054 ──► amnezia-awg2 (awg0, 10.8.1.0/24)
-                              │
-                              ├─ DNS :53 (любой upstream) ──DNAT──► pihole 172.29.172.10
-                              └─ остальной трафик ──MASQUERADE──► интернет
+Клиент (прямой AWG) ──UDP──► :47054 ──► amnezia-awg2 (awg0, 10.8.1.0/24)
+                                          │
+                                          ├─ DNS :53 ──DNAT──► pihole 172.29.172.10
+                                          └─ трафик ──MASQUERADE──► интернет
 
-vk-turn-proxy :56000/udp ──► 127.0.0.1:47054 (опциональная UDP-обёртка)
+Клиент (через VK Calls) ──► сеть звонков VK ──► vk-turn-proxy :56000/udp
+                                                      │
+                                                      └─ connect 127.0.0.1:47054 → amnezia-awg2
+                                                         (host network; AWG в конфиге прокси — localhost)
 
 Мониторинг: Prometheus → Grafana / Alertmanager (Telegram)
 ```
+
+**vk-turn-proxy** — отдельный сервис входа через инфраструктуру звонков VK (не «опциональная обёртка» поверх UDP).  
+На сервере слушает `:56000`, а к AmneziaWG ходит по `-connect 127.0.0.1:47054` (`network_mode: host`).
 
 Сеть Docker: `amnezia-dns-net` (`172.29.172.0/24`):
 | Контейнер        | IP            |
@@ -29,7 +35,7 @@ vk-turn-proxy :56000/udp ──► 127.0.0.1:47054 (опциональная UDP
 ### 0. Требования
 
 - Ubuntu 22.04/24.04, Docker + Compose plugin
-- Публичный IP, открытые UDP: `47054` (AWG), опционально `56000` (vk-turn)
+- Публичный IP, открытые UDP: `47054` (прямой AWG), `56000` (vk-turn-proxy / вход через VK Calls)
 - TCP: админки только после осознанного открытия UFW
 
 ### 1. Клонировать и положить секреты
@@ -93,6 +99,12 @@ docker restart amnezia-awg2
 
 cd /opt/pihole && docker compose up -d
 cd /opt/monitoring && docker compose up -d
+
+# vk-turn-proxy: вход через сеть VK Calls → localhost AWG
+sudo mkdir -p /opt/vk-turn-proxy
+sudo cp vk-turn-proxy/docker-compose.yml /opt/vk-turn-proxy/
+# образ/бинарь — см. vk-turn-proxy/README.md
+cd /opt/vk-turn-proxy && docker compose up -d
 
 # Telegram secrets → alertmanager.yml
 cd /opt/monitoring/alertmanager
@@ -168,7 +180,7 @@ docker compose up -d
 | `amnezia/start.sh` | iptables: DNS hijack, no-NAT к Pi-hole, MSS clamp |
 | `pihole/` | compose, nginx proxy, route scripts, blocklists |
 | `monitoring/` | Prometheus, Grafana dashboards, Alertmanager, exporter |
-| `vk-turn-proxy/` | compose UDP-обёртки перед AWG |
+| `vk-turn-proxy/` | сервис входа через VK Calls → `127.0.0.1:47054` (AWG) |
 | `systemd/` | host route + DNS socat relay |
 
 ## Чего здесь нет (намеренно)
@@ -177,10 +189,10 @@ docker compose up -d
 - Реальные `.env`, Telegram token, пароли панелей
 - Объёмы БД Grafana/Prometheus
 - Полный образ Amnezia (поднимается клиентом Amnezia)
+- Клиентский APK/конфиг для VK Calls (лежит у клиента; endpoint сервера — `:56000`)
 
 ## Замечания по безопасности
 
 - Не коммитьте заполненные `.env` / `secrets.env`
 - После `apply-secrets.sh` в `alertmanager.yml` попадает токен — файл должен быть `640` и **в `.gitignore` уже есть исключения для секретов; сам yml с плейсхолдерами ок для git**
 - Публичные порты админок открывайте только через UFW allowlist
-EOF
