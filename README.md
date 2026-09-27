@@ -12,15 +12,15 @@
                                           ├─ DNS :53 ──DNAT──► pihole 172.29.172.10
                                           └─ трафик ──MASQUERADE──► интернет
 
-Клиент (через VK Calls) ──► сеть звонков VK ──► vk-turn-proxy :56000/udp
-                                                      │
-                                                      └─ connect 127.0.0.1:47054 → amnezia-awg2
-                                                         (host network; AWG в конфиге прокси — localhost)
+Клиент (через VK Calls) ──► vk-turn-proxy :56000/udp
+                                 │
+                                 └─ connect 127.0.0.1:47054 → amnezia-awg2
+                              (host network; AWG в конфиге прокси — localhost)
 
 Мониторинг: Prometheus → Grafana / Alertmanager (Telegram)
 ```
 
-**vk-turn-proxy** — отдельный сервис входа через инфраструктуру звонков VK (не «опциональная обёртка» поверх UDP).  
+**vk-turn-proxy** — отдельный сервис входа через инфраструктуру звонков VK.  
 На сервере слушает `:56000`, а к AmneziaWG ходит по `-connect 127.0.0.1:47054` (`network_mode: host`).
 
 Сеть Docker: `amnezia-dns-net` (`172.29.172.0/24`):
