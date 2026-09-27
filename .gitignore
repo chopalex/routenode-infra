@@ -1,0 +1,30 @@
+# secrets & local state
+.env
+**/.env
+**/secrets.env
+**/*.pem
+**/*.key
+**/keys.json
+**/CONNECT.txt
+**/inbound-uuid.txt
+**/.grafana_admin_pass
+
+# runtime / caches
+**/geoip-cache.json
+**/__pycache__/
+**/*.pyc
+**/log/
+**/etc-pihole/
+**/etc-dnsmasq.d/
+**/db/
+prometheus_data/
+grafana_data/
+alertmanager_data/
+
+# backups
+**/*.backup*
+**/*.bak*
+
+# binaries
+**/server-linux-amd64
+**/*.tar.gz

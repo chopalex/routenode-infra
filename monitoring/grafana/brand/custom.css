@@ -1,0 +1,83 @@
+/* ============================================================
+   Routenode custom theme — "gradient card" style (blue -> purple)
+   Reference: SigNoz promo card (#3b5bd6 -> #7a3fd0 background,
+   white title, lavender secondary text)
+   Applies in both light and dark UI via [data-theme] overrides.
+   ============================================================ */
+
+:root {
+  --rn-grad-a: #3b5bd6;   /* card gradient start (blue)   */
+  --rn-grad-b: #7a3fd0;   /* card gradient end (purple)   */
+  --rn-grad-accent: #4f8df9; /* links / highlights        */
+}
+
+/* ---------- Stat panels (health tiles) — gradient background ---------- */
+
+/* Colour-mapped stat tiles get the gradient; state colour moves to text+border */
+[data-theme="dark"] [data-testid="data-testid Panel status stat"],
+[data-theme="light"] [data-testid="data-testid Panel status stat"] {
+  background: linear-gradient(135deg, var(--rn-grad-a) 0%, var(--rn-grad-b) 100%);
+  border-radius: 10px;
+}
+
+/* Tiles whose colourMode is "background" carry inline colour via value-scoped
+   class; we soften those into the gradient too and keep meaning via icon/text */
+div.panel-container div.css-fh9ljh,
+div.panel-container .panel-content {
+  border-radius: 10px;
+}
+
+/* ---------- Panels: rounded corners + subtle gradient border ---------- */
+
+.panel-container {
+  border-radius: 12px;
+  border: 1px solid rgba(122, 63, 208, 0.25);
+  box-shadow: 0 1px 3px rgba(59, 91, 214, 0.12);
+}
+
+/* ---------- Dashboard header: gradient underline ---------- */
+
+.page-header__title {
+  letter-spacing: 0.2px;
+}
+
+[data-testid="data-testid Dashboard controls"] {
+  border-bottom: 2px solid transparent;
+  border-image: linear-gradient(90deg, var(--rn-grad-a), var(--rn-grad-b)) 1;
+}
+
+/* ---------- Buttons & links ---------- */
+
+a { color: var(--rn-grad-accent); }
+
+button[data-testid="data-testid RefreshPicker runButton"] {
+  background: linear-gradient(135deg, var(--rn-grad-a), var(--rn-grad-b));
+  border: none;
+  color: #fff;
+}
+
+/* ---------- Login page: full gradient background ---------- */
+
+.login-page {
+  background:
+    url('/public/img/login_background.png') center/cover no-repeat,
+    linear-gradient(135deg, var(--rn-grad-a) 0%, var(--rn-grad-b) 100%) !important;
+}
+
+.login-page .login-box,
+.login-page .login-card {
+  background: rgba(20, 16, 45, 0.55) !important;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 14px;
+}
+
+.login-page h1, .login-page h2 {
+  color: #fff;
+}
+
+/* ---------- Nav bar accent ---------- */
+
+.navbar {
+  border-bottom: 2px solid transparent;
+  border-image: linear-gradient(90deg, var(--rn-grad-a), var(--rn-grad-b)) 1;
+}

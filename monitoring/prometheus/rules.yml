@@ -1,0 +1,89 @@
+groups:
+  - name: vpn_slo
+    interval: 15s
+    rules:
+      - record: awg:peers_online_ratio
+        expr: awg_peers_online_ratio
+      - record: awg:rx_bps
+        expr: sum(rate(awg_receive_bytes_total[5m]))
+      - record: awg:tx_bps
+        expr: sum(rate(awg_transmit_bytes_total[5m]))
+      - record: awg:peer_rx_bps
+        expr: rate(awg_peer_receive_bytes_total[5m])
+      - record: awg:peer_tx_bps
+        expr: rate(awg_peer_transmit_bytes_total[5m])
+
+  - name: sla_recording
+    interval: 60s
+    rules:
+      - record: slo:vpn_uptime_24h
+        expr: avg_over_time(awg_up[24h])
+      - record: slo:dns_uptime_24h
+        expr: avg_over_time(pihole_up[24h])
+      - record: slo:peer_availability_24h
+        expr: avg_over_time(awg_peer_online[24h])
+      - record: slo:worst_peer_availability_24h
+        expr: min(slo:peer_availability_24h)
+      - record: slo:handshake_age_p95
+        expr: |
+          max by (peer) (
+            quantile_over_time(0.95, awg_peer_handshake_age_seconds[24h])
+            and awg_peer_handshake_age_seconds >= 0
+          )
+
+  - name: sla_alerts
+    interval: 15s
+    rules:
+      - alert: AWGDown
+        expr: awg_up == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "AmneziaWG interface is down"
+          description: 'awg_up=0 on {{ $labels.instance }} for more than 1 minute. VPN clients cannot connect.'
+
+      - alert: VPNServerDown
+        expr: container_service_up{name=~"amnezia-awg2|vk-turn-proxy"} == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "VPN container {{ $labels.name }} is not running"
+          description: 'Container {{ $labels.name }} is down (state != running) for 2m.'
+
+      - alert: DNSDown
+        expr: pihole_up == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Pi-hole DNS API unreachable"
+          description: "service-exporter cannot reach Pi-hole API for 2m. VPN clients may have no DNS."
+
+      - alert: ExporterScrapeFail
+        expr: up{job="services"} == 0
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "service-exporter scrape failing"
+          description: "Prometheus cannot scrape service-exporter for 5m. Monitoring is blind (SLA data gaps)."
+
+      - alert: MonitoringStackDegraded
+        expr: container_services_down > 0
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $value }} expected container(s) down"
+          description: 'container_services_down={{ $value }} (excludes intentionally-stopped x-ui).'
+
+      - alert: AWGInterfaceSaturating
+        expr: (awg:rx_bps + awg:tx_bps) > 5000000
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "VPN interface saturating: {{ $value | humanize }}B/s"
+          description: 'Combined AWG throughput above 5 MB/s for 10m. One peer may be monopolizing the channel (see Peer details).'

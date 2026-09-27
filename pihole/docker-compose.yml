@@ -1,0 +1,54 @@
+services:
+  pihole:
+    image: pihole/pihole:latest
+    container_name: pihole
+    hostname: pihole
+    restart: unless-stopped
+    networks:
+      amnezia-dns-net:
+        ipv4_address: 172.29.172.10
+    env_file:
+      - .env
+    environment:
+      TZ: "Europe/Moscow"
+      FTLCONF_dns_upstreams: "1.1.1.1;8.8.8.8"
+      FTLCONF_dns_dnssec: "true"
+      FTLCONF_dns_interface: "eth0"
+      FTLCONF_dns_listeningMode: "bind"
+      FTLCONF_dns_CNAMEdeepInspect: "true"
+      FTLCONF_dns_blockESNI: "true"
+      FTLCONF_dns_blocking_active: "true"
+      FTLCONF_dns_blocking_mode: "NULL"
+      FTLCONF_dns_blockTTL: "2"
+      FTLCONF_dns_specialDomains_iCloudPrivateRelay: "true"
+      FTLCONF_dns_specialDomains_mozillaCanary: "true"
+      FTLCONF_dns_specialDomains_designatedResolver: "true"
+      FTLCONF_webserver_port: "80"
+    cap_add:
+      - NET_ADMIN
+    entrypoint: ["/bin/bash", "/opt/pihole-scripts/with-awg-route.sh"]
+    volumes:
+      - /opt/pihole/etc-pihole:/etc/pihole
+      - /opt/pihole/etc-dnsmasq.d:/etc/dnsmasq.d
+      - /opt/pihole/log:/var/log/pihole
+      - /opt/pihole/with-awg-route.sh:/opt/pihole-scripts/with-awg-route.sh:ro
+    logging:
+      driver: local
+
+  webproxy:
+    image: nginx:alpine
+    container_name: pihole-webproxy
+    restart: unless-stopped
+    depends_on:
+      - pihole
+    networks:
+      - amnezia-dns-net
+    ports:
+      - "61864:80/tcp"
+    volumes:
+      - /opt/pihole/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      - /opt/pihole/log/nginx:/var/log/nginx
+
+networks:
+  amnezia-dns-net:
+    external: true

@@ -1,0 +1,145 @@
+# Lightweight monitoring for routenode1 (~1GB RAM)
+
+services:
+  prometheus:
+    image: prom/prometheus:v2.55.1
+    container_name: prometheus
+    restart: unless-stopped
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --storage.tsdb.retention.time=7d
+      - --storage.tsdb.retention.size=768MB
+      - --web.enable-lifecycle
+      - --web.listen-address=0.0.0.0:9090
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./prometheus/rules.yml:/etc/prometheus/rules.yml:ro
+      - prometheus_data:/prometheus
+    ports:
+      - "127.0.0.1:9090:9090"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    networks:
+      - monitoring
+    mem_limit: 160m
+    memswap_limit: 320m
+    cpus: 0.5
+
+  alertmanager:
+    image: prom/alertmanager:v0.27.0
+    container_name: alertmanager
+    restart: unless-stopped
+    command:
+      - --config.file=/etc/alertmanager/alertmanager.yml
+      - --storage.path=/alertmanager
+      - --web.listen-address=0.0.0.0:9093
+    volumes:
+      - ./alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+      - alertmanager_data:/alertmanager
+    ports:
+      - "127.0.0.1:9093:9093"
+    networks:
+      - monitoring
+    mem_limit: 64m
+    memswap_limit: 128m
+    cpus: 0.2
+
+  grafana:
+    image: grafana/grafana:11.3.1
+    container_name: grafana
+    restart: unless-stopped
+    environment:
+      GF_CUSTOM: /usr/share/grafana/public/img/custom.css
+      GF_SERVER_APP_TITLE: Routenode Monitoring
+      GF_ORG_NAME: Routenode
+      GF_LOGIN_DEFAULT_TITLE: "Routenode VPN"
+      GF_LOGIN_WELCOME_TEXT_ON_HOME_PAGE: "Routenode Monitoring"
+      GF_SECURITY_ADMIN_USER: ${GF_SECURITY_ADMIN_USER}
+      GF_SECURITY_ADMIN_PASSWORD: ${GF_SECURITY_ADMIN_PASSWORD}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_USERS_DEFAULT_THEME: light
+      GF_DEFAULT_THEME: light
+      GF_SERVER_ROOT_URL: http://172.29.172.1:3000
+      GF_SERVER_HTTP_PORT: "3000"
+      GF_ANALYTICS_REPORTING_ENABLED: "false"
+      GF_ANALYTICS_CHECK_FOR_UPDATES: "false"
+      GF_PATHS_PROVISIONING: /etc/grafana/provisioning
+      GF_INSTALL_PLUGINS: ""
+      GF_PLUGINS_PREINSTALL: ""
+      GF_FEATURE_TOGGLES_ENABLE: ""
+      GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: /var/lib/grafana/dashboards/home.json
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - ./grafana/brand:/usr/share/grafana/public/img:ro
+    ports:
+      - "127.0.0.1:3000:3000"
+      - "172.29.172.1:3000:3000"
+      - "49818:3000"
+    depends_on:
+      - prometheus
+    networks:
+      - monitoring
+    mem_limit: 160m
+    memswap_limit: 320m
+    cpus: 0.5
+
+  node-exporter:
+    image: prom/node-exporter:v1.8.2
+    container_name: node-exporter
+    restart: unless-stopped
+    command:
+      - --path.procfs=/host/proc
+      - --path.sysfs=/host/sys
+      - --path.rootfs=/host/root
+      - --collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)
+      - --collector.netdev.device-exclude=^(veth.*|br-.*|docker.*|lo)$
+      - --collector.processes
+      - --collector.tcpstat
+      - --collector.textfile.directory=/var/lib/node_exporter/textfile
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/host/root:ro,rslave
+      - /var/lib/node_exporter/textfile:/var/lib/node_exporter/textfile:ro
+    network_mode: host
+    pid: host
+    mem_limit: 48m
+    memswap_limit: 96m
+    cpus: 0.25
+
+
+  service-exporter:
+    build: ./exporters
+    container_name: service-exporter
+    restart: unless-stopped
+    environment:
+      EXPORTER_LISTEN: 0.0.0.0:9101
+      PIHOLE_URL: http://host.docker.internal:61864
+      AWG_CONTAINER: amnezia-awg2
+      AWG_IFACE: awg0
+      SCRAPE_CACHE_SEC: "5"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./exporters/.env:/app/.env:ro
+      - ./exporters/geoip-cache.json:/app/geoip-cache.json
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    networks:
+      - monitoring
+    mem_limit: 48m
+    memswap_limit: 96m
+    cpus: 0.2
+
+
+networks:
+  monitoring:
+    name: monitoring
+    driver: bridge
+
+volumes:
+  alertmanager_data:
+  prometheus_data:
+  grafana_data:

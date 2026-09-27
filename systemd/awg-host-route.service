@@ -1,0 +1,12 @@
+[Unit]
+Description=Route 10.8.1.0/24 to AmneziaWG for Pi-hole replies
+After=docker.service
+Requires=docker.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/opt/pihole/awg-host-route.sh
+
+[Install]
+WantedBy=multi-user.target

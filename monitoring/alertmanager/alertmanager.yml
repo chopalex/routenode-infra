@@ -1,0 +1,63 @@
+global:
+  resolve_timeout: 5m
+
+# Values below are placeholders until TG_BOT_TOKEN / TG_CHAT_ID are filled
+# by /opt/monitoring/alertmanager/apply-secrets.sh (reads secrets.env, 600 perms).
+
+route:
+  receiver: am-annotator
+  group_by: [alertname]
+  group_wait: 10s
+  group_interval: 5m
+  repeat_interval: 4h
+  routes:
+    - receiver: am-annotator
+      continue: true
+      matchers:
+        - alertname =~ ".+"
+      group_wait: 10s
+      group_interval: 5m
+      repeat_interval: 4h
+    - receiver: telegram-critical
+      matchers:
+        - severity = "critical"
+      group_wait: 30s
+      group_interval: 5m
+      repeat_interval: 4h
+    - receiver: telegram-warning
+      matchers:
+        - severity =~ "warning|info"
+      group_wait: 2m
+      group_interval: 10m
+      repeat_interval: 12h
+
+receivers:
+  - name: telegram-critical
+    telegram_configs:
+      - bot_token: "TG_BOT_TOKEN_PLACEHOLDER"
+        chat_id: -1
+        api_url: https://api.telegram.org
+        send_resolved: true
+        parse_mode: HTML
+        message: |
+          {{ if eq .Status "firing" }}{{ "🔴" }}{{ else }}{{ "🟢" }}{{ end }} <b>{{ .CommonAnnotations.summary }}</b>
+          {{ range .Alerts }}{{ .Annotations.description }}
+          {{ range .Labels.SortedPairs }}• {{ .Name }}: {{ .Value }}
+          {{ end }}{{ end }}
+  - name: am-annotator
+    webhook_configs:
+      - url: http://172.29.172.1:9102/
+        send_resolved: true
+        max_alerts: 0
+
+  - name: telegram-warning
+    telegram_configs:
+      - bot_token: "TG_BOT_TOKEN_PLACEHOLDER"
+        chat_id: -1
+        api_url: https://api.telegram.org
+        send_resolved: true
+        parse_mode: HTML
+        message: |
+          {{ if eq .Status "firing" }}{{ "🟡" }}{{ else }}{{ "🟢" }}{{ end }} <b>{{ .CommonAnnotations.summary }}</b>
+          {{ range .Alerts }}{{ .Annotations.description }}
+          {{ end }}

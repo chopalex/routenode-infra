@@ -1,0 +1,12 @@
+[Unit]
+Description=Pi-hole DNS relay TCP for worker node only
+After=docker.service network-online.target
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/socat TCP4-LISTEN:53,bind=PUBLIC_IP,fork,reuseaddr TCP4:172.29.172.10:53
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target
