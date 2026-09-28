@@ -9,10 +9,10 @@ Tweaks vs stock Amnezia:
 - FORWARD eth0→awg0 for Pi-hole replies
 - TCP MSS clamp 1280 (vk-turn + AWG path)
 
-Deploy: copy into the running container and ensure the container entrypoint uses it
-(Amnezia typically keeps `/opt/amnezia/start.sh` inside the image/volume).
+AmneziaWG ставится **с клиента Amnezia** (не из этого репо). После появления контейнера `amnezia-awg2`:
 
 ```bash
-docker cp amnezia/start.sh amnezia-awg2:/opt/amnezia/start.sh
-# or bind-mount in your AWG compose
+sudo ./scripts/apply-amnezia-tweaks.sh
+# эквивалент:
+# docker cp amnezia/start.sh amnezia-awg2:/opt/amnezia/start.sh && docker restart amnezia-awg2
 ```
